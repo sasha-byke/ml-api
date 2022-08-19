@@ -1,4 +1,6 @@
 # TL; DR:
+Simple solution for a machine learning model API in a docker container
+
 ## Option 1: run API locally with uvicorn
 ```bash
 $ uvicorn main:app --port 5000 --host 0.0.0.0
