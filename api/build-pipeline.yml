@@ -1,0 +1,29 @@
+trigger:
+- '*'
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  imageName: ml-api:latest
+
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.9'
+  displayName: 'Use Python 3.9'
+
+- task: PipAuthenticate@1
+  displayName: Authenticate with artifact feed
+  inputs:
+   artifactFeeds: dss
+   onlyAddExtraIndex: true
+
+- bash: |
+    docker build \
+      --build-arg 'INDEX_URL= $(PIP_EXTRA_INDEX_URL)' \
+      -t $(imageName) \
+      -f Dockerfile \
+      .
+  displayName: Build image

@@ -12,9 +12,11 @@ X, y = df.iloc[:, :-1], df.iloc[:, [-1]]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
 
-# fit model no training data
+# fit model on training data
 model = XGBClassifier()
 model.fit(X_train, y_train)
+
+# skipping testing part as it is out of scope for this blog.
 
 filename = "models/model_diabetes.pkl"
 

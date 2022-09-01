@@ -3,6 +3,9 @@ from pydantic import BaseModel
 import pickle
 import numpy as np
 
+# import function from 
+from mypreprocessing import preprocess_data
+
 class Request(BaseModel):
     feature_a: int
     feature_b: int
@@ -26,20 +29,22 @@ app = FastAPI()
 @app.post("/predict", response_model=Response)
 def predict(item: Request):
 
-    x = np.array(
+    data = [
         [
-            [
-                item.feature_a, 
-                item.feature_b, 
-                item.feature_c, 
-                item.feature_f, 
-                item.feature_e, 
-                item.feature_f, 
-                item.feature_g, 
-                item.feature_h
-            ]
+            item.feature_a, 
+            item.feature_b, 
+            item.feature_c, 
+            item.feature_f, 
+            item.feature_e, 
+            item.feature_f, 
+            item.feature_g, 
+            item.feature_h
         ]
-    )
+    ]
+
+    x = preprocess_data(data)
+
+
     
     prediction = model.predict(x)
     
