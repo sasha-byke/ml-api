@@ -1,4 +1,9 @@
-# Introduction
+# Machine Learning prediction API cloud solution in a docker container with preprocessing module in a secure python package as an Azure artifact
+
+This blog is to give an idea on how to solve the following problem: what if you need a machine learning prediction API solution in a docker container but in order to build said image you need  a private python package (for example, preprocessing, or any other module that you would need in a more than 1 repo\solution and that contains sensitive information) that should be securely installed using Azure pipelines and Azure artifacts. The idea is as follows: we create a python package, put it in a Azure artifact feed then we either use Personal Access Tokens from azure to install it locally or use Azure pipelines to authentication for us.
+
+
+## Introduction
 
 The following is to show how to create:
 1) Simple XGBoost machine learning model, store it in a pickle file
@@ -9,7 +14,7 @@ The following is to show how to create:
 Why would you need a separate package for preprocessing? At HumanTotalCare we work with medical data, thus security of our software and our packages in essential -- and the separate python package is needed so that we could use the same preprocessing model for different solutions (for example, training and prediction services). Same logic would apply for any reusable module that you would want to use as a python package.
 
 
-# 1) Machine Learning Model
+## 1) Machine Learning Model
 Here, we will use publicly available model and dataset from here https://machinelearningmastery.com/develop-first-xgboost-model-python-scikit-learn/ to train and store model in a pickle file. The code has been tested in Python version 3.9 .Other versions of Python might suffice as well, but haven't been tested.
 
 Here, we dive into folder `api`. Train on the data from "data" folder and save output as a pickle in a "model" folder
@@ -48,7 +53,7 @@ Run the code
 $ python train.py
 ```
 
-# 2) Private python package in Azure for preprocessing
+## 2) Private python package in Azure for preprocessing
 Before we start, it's good to read the latest guide on how to upload a python package on microsoft's website: 
 https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/package/twine-authenticate?view=azure-devops
 
@@ -146,7 +151,7 @@ There are 3 important things here:
 
 Now we have our package securely stored in Azure but the problem is we can't just `pip install` it by design in our container, we need to either supply a secret as a personal access token (PAT) to install it locally in a docker image or use azure pipelines authentication to do so. We will discuss that in detail later
 
-# 3) Create an API
+## 3) Create an API
 First, let's decide what our API input (request) and output (response) are. It is a good practice to provide your API consumer with an explicit data schema -- here we do so by using recommended BaseModel as FastAPI suggests. We explicitly define every feature that we expect by name and data type. For simplicity, in a response class we define only the model name and prediction value (1 or 0)
 
 Refer to FastAPI documentation (https://fastapi.tiangolo.com/) for more information on the subject.
@@ -280,8 +285,8 @@ def predict(item: Request):
     return prediction_response
 ```
 
-# 4) Dockerfile, build an image, install private package:
-## Requirements
+## 4) Dockerfile, build an image, install private package:
+### Requirements
 First, lets put all the python libraries (including our private one) that we used in `requirements.txt` :
 ```txt 
 fastapi
@@ -302,7 +307,7 @@ Create Dockerfile with our API. Here, it takes `python:3.9` image, adds current 
 There is nothing specific about Dockerfile we will use, except the fact that we need to install our private package in the image. Here we will cover 2 options of doing that: first, local, is to supply Personal Access Token in a secret file -- that would allow as to build image locally. Even though it is not a preferred method, we still wanted to cover that to understand "how" it is done on the cloud as well which is hidden from our eyes by Azure. Second option (preferred) is to use Azure tools for that when you use build agents. You will cover both option it detail below
 ### Option 1: local
 
-# Prepare local secret from PAT (Personal Access Token)
+#### Prepare local secret from PAT (Personal Access Token)
 (Used this is a reference https://medium.com/devops-dudes/using-private-python-azure-artifacts-feeds-in-alpine-docker-builds-909e6558c1a4)
 
 1. Create Personal Access Token in azure, copy the secret ("pattoken") locally
@@ -332,17 +337,17 @@ CMD ["uvicorn", "main:app", "--port", "5000", "--host", "0.0.0.0"]
 ```
 So let's break down what happens here, first of all parameter `--extra-index-url` for `pip` is the way to say to pip to not download packages from "default" repository but to actually go to a private one (for us, that would be our Azure artifacts). In order to communicate to that storage, we create environmental variable `PRIVATE_PIP_AZURE_ARTIFACTS_URL` that is basically storing the PAT (secret) and a domain name of our artifact. We supply inside of our `pip.url.secret` to that variable so that our docker image knows where to look for our preprocessing package and how to authenticate itself to install the package
 
-### Build image
+#### Build image
 ```bash
 $ docker build -f Dockerfile -t ml-api:latest .
 ```
 
-### Run container
+#### Run container
 Here we use once again port 5000 for consistency
 ```bash
 $ docker container run -p 5000:5000 ml-api:latest
 ```
-### Test
+#### Test
 Test with the same command as before:
 ```bash
 $ curl -X POST -H "Content-Type: application/json" --url http://localhost:5000/predict -d @mock.json
@@ -350,19 +355,19 @@ $ curl -X POST -H "Content-Type: application/json" --url http://localhost:5000/p
 {"model":"diabetes","pred":1}
 ```
 
-## Swagger UI page
+#### Swagger UI page
 From both container and local API versions, you have your swagger UI version exposed for other API consumers to know how to communicate with your API. By default it is available here (in your browser):
 
 https://localhost:5000/docs
 
 
-## Run the API locally:
+#### Run the API locally:
 Do not forget to install your preprocessing first!
 ```bash
 $ uvicorn main:app --port 5000 --host 0.0.0.0
 ```
 
-## Test your API
+#### Test your API
 You can use example `mock.json` file for testing:
 ```json
 {
@@ -383,10 +388,10 @@ $ curl -X POST -H "Content-Type: application/json" --url http://localhost:5000/p
 {"model":"diabetes","pred":1}
 ```
 
-## Option 2: Cloud with Azure pipelines (preferred)
+### Option 2: Cloud with Azure pipelines (preferred)
 This option is relatively easier to set up as you do not need to touch any secrets explicitly
 
-## Dockerfile
+#### Dockerfile
 So the Dockerfile would look much simpler:
 `Dockerfile`:
 ```Dockerfile
@@ -400,7 +405,7 @@ WORKDIR /api
 # start the server
 CMD ["uvicorn", "main:app", "--port", "5000", "--host", "0.0.0.0"]
 ```
-## Build pipeline
+#### Build pipeline
 `build-pipeline.yml`:
 ```yaml
 trigger:
@@ -439,5 +444,5 @@ Next, that variable is supplied to `docker build` command with argument `--build
 
 As soon as you have your image built, you can push it to your container storage. 
 
-# Conclusion
+## Conclusion
 We learnt how to create and test an API running a machine learning model, securely store preprocessing modules for it in a private python package in Azure as an artifact and how to create a containerised docker solution with all of those locally or in the cloud.
