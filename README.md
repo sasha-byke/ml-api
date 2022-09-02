@@ -1,6 +1,6 @@
 # Machine Learning prediction API cloud solution in a docker container with preprocessing module in a secure python package as an Azure artifact
 
-This blog is to give an idea on how to solve the following problem: what if you need a machine learning prediction API solution in a docker container but in order to build said image you need  a private python package (for example, preprocessing, or any other module that you would need in a more than 1 repo\solution and that contains sensitive information) that should be securely installed using Azure pipelines and Azure artifacts. The idea is as follows: we create a python package, put it in a Azure artifact feed then we either use Personal Access Tokens from azure to install it locally or use Azure pipelines to authentication for us.
+This blog is to give an idea on how to solve the following problem: what if you need a machine learning prediction API solution in a docker container but in order to build said image you need a private python package (for example, preprocessing, or any other module that you would need in a more than 1 repo\solution and that contains sensitive information) that should be securely installed using Azure pipelines and Azure artifacts. The idea is as follows: we create a python package, put it in an Azure artifact feed then we either use Personal Access Tokens from azure to install it locally or use Azure pipelines to authenticate for us.
 
 
 ## Introduction
@@ -11,13 +11,14 @@ The following is to show how to create:
 3) Create an API in python using FastAPI with the pickled model
 4) Build a docker container with the API, securely install your private package using Azure pipelines
 
-Why would you need a separate package for preprocessing? At HumanTotalCare we work with medical data, thus security of our software and our packages in essential -- and the separate python package is needed so that we could use the same preprocessing model for different solutions (for example, training and prediction services). Same logic would apply for any reusable module that you would want to use as a python package.
+Why would you need a separate package for preprocessing? At HumanTotalCare we work with medical data, thus the security of our software and our packages are essential -- and a separate python package is needed so that we could use the same preprocessing model for different solutions (for example, training and prediction services). The same logic would apply to any reusable module that you would want to use as a python package.
 
 
 ## 1) Machine Learning Model
-Here, we will use publicly available model and dataset from here https://machinelearningmastery.com/develop-first-xgboost-model-python-scikit-learn/ to train and store model in a pickle file. The code has been tested in Python version 3.9 .Other versions of Python might suffice as well, but haven't been tested.
+Here, we will use the publicly available model and dataset from here https://machinelearningmastery.com/develop-first-xgboost-model-python-scikit-learn/ to train and store the model in a pickle file. 
+The code is suitable for Python version 3.9
 
-Here, we dive into folder `api`. Train on the data from "data" folder and save output as a pickle in a "model" folder
+Now we will dive into folder `api`. Train on the data from "data" folder and save output as a pickle in a "model" folder
 
 Code for `train.py`:
 ```python
@@ -57,7 +58,7 @@ $ python train.py
 Before we start, it's good to read the latest guide on how to upload a python package on microsoft's website: 
 https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/package/twine-authenticate?view=azure-devops
 
-First let's look at the files structure and give explanations for every important piece here: 
+First, let's look at the files structure and give explanations for every important piece here: 
 
 ```bash
 └───preprocessing
@@ -72,7 +73,7 @@ First let's look at the files structure and give explanations for every importan
                 __init__.py
 ```
 
-We start with a simple preprocessing function that just converts python list to numpy array
+We start with a simple preprocessing function that just converts a python list to a NumPy array
 
 `src/mypreprocessing/preprocessing.py`:
 ```python
@@ -89,7 +90,7 @@ def preprocess(data):
 
 `pyproject.toml` is quite simple, just do not forget to include packages that you need (like numpy, scikit-learn or others)
 
-Here we specify the name of our package (so `pip` knows how to call it), some credentials and location of our modules (where = `src`) 
+Here we specify the name of our package (so `pip` knows how to call it), some credentials and the location of our modules (where = `src`) 
 `setup.cfg`:
 ```conf
 [metadata]
@@ -112,7 +113,7 @@ where = src
 This is a good moment to pause for a bit to make some preparations -- make sure you have your artifact feed created, for that use the following guide from Microsoft:
 https://docs.microsoft.com/en-us/azure/devops/artifacts/quickstarts/python-packages?view=azure-devops#create-a-feed
 
-In this example we created `dss` (data science service) feed and will use it explicitly later on
+In this example, we created `dss` (data science service) feed and will use it explicitly later on
 
 And last but not least, we specify a build pipeline for Azure pipelines:
 `build-pipeline.yaml`:
@@ -152,11 +153,11 @@ There are 3 important things here:
 Now we have our package securely stored in Azure but the problem is we can't just `pip install` it by design in our container, we need to either supply a secret as a personal access token (PAT) to install it locally in a docker image or use azure pipelines authentication to do so. We will discuss that in detail later
 
 ## 3) Create an API
-First, let's decide what our API input (request) and output (response) are. It is a good practice to provide your API consumer with an explicit data schema -- here we do so by using recommended BaseModel as FastAPI suggests. We explicitly define every feature that we expect by name and data type. For simplicity, in a response class we define only the model name and prediction value (1 or 0)
+First, let's decide what our API input (request) and output (response) are. It is a good practice to provide your API consumer with an explicit data schema -- here we do so by using recommended BaseModel as FastAPI suggests. We explicitly define every feature that we expect by name and data type. For simplicity, in a response class, we define only the model name and prediction value (1 or 0)
 
 Refer to FastAPI documentation (https://fastapi.tiangolo.com/) for more information on the subject.
 
-From here we go back to folder 'api', where we will compile our `main.py` from several pieces of code:
+From here we go back to folder `api`, where we will compile our `main.py` from several pieces of code:
 
 First, define our data schema:
 ```python
@@ -187,7 +188,7 @@ model = pickle.load(open(filename, "rb"))
 
 And now the actual FastAPI implementation -- we create just one POST method that takes data in `Request` format and outputs data in `Response` format as has been previously defined in data schema.
 
-Here we create an array from `Request` but we convert it to numpy array via our private preprocessing package `mypreprocessing`
+Here we create an array from `Request` but we convert it to a NumPy array via our private preprocessing package `mypreprocessing`
 ```python
 from fastapi import FastAPI
 import numpy as np
@@ -302,10 +303,10 @@ mypreprocessing==1.1.0
 ```
 
 ## Dockerfile
-Create Dockerfile with our API. Here, it takes `python:3.9` image, adds current folder to it and makes it a working directory, installs python libraries from requirements.txt and finally starts our API using the same command as we would use to test our API locally
+Create Dockerfile with our API. Here, it takes `python:3.9` image, adds a current folder to it and makes it a working directory, installs python libraries from requirements.txt and finally starts our API using the same command as we would use to test our API locally
 
-There is nothing specific about Dockerfile we will use, except the fact that we need to install our private package in the image. Here we will cover 2 options of doing that: first, local, is to supply Personal Access Token in a secret file -- that would allow as to build image locally. Even though it is not a preferred method, we still wanted to cover that to understand "how" it is done on the cloud as well which is hidden from our eyes by Azure. Second option (preferred) is to use Azure tools for that when you use build agents. You will cover both option it detail below
-### Option 1: local
+There is nothing specific about Dockerfile we will use, except the fact that we need to install our private package in the image. Here we will cover 2 options for doing that: first, local, is to supply Personal Access Token in a secret file -- that would allow us to build the image locally. Even though it is not a preferred method, we still wanted to cover that to understand "how" it is done on the cloud as well which is hidden from our eyes by Azure. The second option (preferred) is to use Azure tools for that when you use build agents. We will cover both options in detail below
+### Option 1: Local
 
 #### Prepare local secret from PAT (Personal Access Token)
 (Used this is a reference https://medium.com/devops-dudes/using-private-python-azure-artifacts-feeds-in-alpine-docker-builds-909e6558c1a4)
@@ -335,7 +336,7 @@ WORKDIR /api
 # start the server
 CMD ["uvicorn", "main:app", "--port", "5000", "--host", "0.0.0.0"]
 ```
-So let's break down what happens here, first of all parameter `--extra-index-url` for `pip` is the way to say to pip to not download packages from "default" repository but to actually go to a private one (for us, that would be our Azure artifacts). In order to communicate to that storage, we create environmental variable `PRIVATE_PIP_AZURE_ARTIFACTS_URL` that is basically storing the PAT (secret) and a domain name of our artifact. We supply inside of our `pip.url.secret` to that variable so that our docker image knows where to look for our preprocessing package and how to authenticate itself to install the package
+So let's break down what happens here, first of all, parameter `--extra-index-url` for `pip` is the way to say to pip to not download packages from the "default" repository but to actually go to a private one (for us, that would be our Azure artifacts). In order to communicate to that storage, we create an environmental variable `PRIVATE_PIP_AZURE_ARTIFACTS_URL` that is basically storing the PAT (secret) and a domain name of our artifact. We supply inside of our `pip.url.secret` to that variable so that our docker image knows where to look for our preprocessing package and how to authenticate itself to install the package
 
 #### Build image
 ```bash
@@ -438,9 +439,9 @@ steps:
       .
   displayName: Build image
 ```
-Once again, let us break a few things down here. First of all, task `PipAuthenticate@1` is doing the authentication for us, we specify artifact feed (`dss`) and it produces environmental variable for us `PIP_EXTRA_INDEX_URL` that contains address and access token to connect to private Azure artifact storage (similar to one that we put in `pip.url.secret` locally before)
+Once again, let us break a few things down here. First of all, task `PipAuthenticate@1` is doing the authentication for us, we specify artifact feed (`dss`) and it produces an environmental variable for us `PIP_EXTRA_INDEX_URL` that contains an address and access token to connect to private Azure artifact storage (similar to one that we put in `pip.url.secret` locally before)
 
-Next, that variable is supplied to `docker build` command with argument `--build-arg 'INDEX_URL= $(PIP_EXTRA_INDEX_URL)'` so that `pip` inside docker image knows where to look for our package and how to authenticate itself in order to install it
+Next, that variable is supplied to `docker build` command with argument `--build-arg 'INDEX_URL= $(PIP_EXTRA_INDEX_URL)'` so that `pip` inside the docker image knows where to look for our package and how to authenticate itself in order to install it
 
 As soon as you have your image built, you can push it to your container storage. 
 
