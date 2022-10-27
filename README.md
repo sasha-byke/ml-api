@@ -326,12 +326,12 @@ Be aware that this is a temporary measure and running this in production is very
 ```Dockerfile
 FROM python:3.9
 
+ADD . /api
+WORKDIR /api
+
 # be aware this is not very secure and should be used very accurately
 RUN PRIVATE_PIP_AZURE_ARTIFACTS_URL=$(cat pip.url.secret) && \
     pip install -r requirements.txt --extra-index-url=${PRIVATE_PIP_AZURE_ARTIFACTS_URL}  
-
-ADD . /api
-WORKDIR /api
 
 # start the server
 CMD ["uvicorn", "main:app", "--port", "5000", "--host", "0.0.0.0"]
@@ -398,10 +398,10 @@ So the Dockerfile would look much simpler:
 ```Dockerfile
 FROM python:3.9
 
-RUN pip install -r requirements.txt
-
 ADD . /api
 WORKDIR /api
+
+RUN pip install -r requirements.txt
 
 # start the server
 CMD ["uvicorn", "main:app", "--port", "5000", "--host", "0.0.0.0"]
