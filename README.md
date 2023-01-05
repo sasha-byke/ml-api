@@ -445,5 +445,7 @@ Next, that variable is supplied to `docker build` command with argument `--build
 
 As soon as you have your image built, you can push it to your container storage. 
 
+For this part, I used the following blog post as a reference: https://gist.github.com/noelbundick/0262aa0f37ec3f9a179137c622b6280d
+
 ## Conclusion
 We learnt how to create and test an API running a machine learning model, securely store preprocessing modules for it in a private python package in Azure as an artifact and how to create a containerised docker solution with all of those locally or in the cloud.
