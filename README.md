@@ -428,7 +428,7 @@ steps:
 - task: PipAuthenticate@1
   displayName: Authenticate with artifact feed
   inputs:
-   artifactFeeds: dss
+   artifactFeeds: (<Project>/)dss
    onlyAddExtraIndex: true
 
 - bash: |
